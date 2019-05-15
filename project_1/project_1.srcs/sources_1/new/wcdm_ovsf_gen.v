@@ -31,9 +31,9 @@
      input S_AXIS_CONFIG_TVALID,
      input [15:0] S_AXIS_CONFIG_TDATA,
      //axim
-     output M_AXIS_DATA_TVALID,
-     output M_AXIS_DATA_TREADY,
-     output M_AXIS_DATA_TLAST,
+     output logic M_AXIS_DATA_TVALID,   // выходной сигнал валидности даннных
+     output logic M_AXIS_DATA_TREADY,
+     output logic M_AXIS_DATA_TLAST,    // сигнал последнего слова
      output [8:0] M_AXIS_DATA_TDATA
      );
  /******************************************************************
@@ -70,15 +70,15 @@
                 end
              else
                 begin
-                    case(S_AXIS_CONFIG_TDATA[11:9])
-                        3'b000  : SF <= 3;
-                        3'b001  : SF <= 7;
-                        3'b010  : SF <= 16;
-                        3'b011  : SF <= 31;
-                        3'b100  : SF <= 63;
-                        3'b101  : SF <= 127;
-                        3'b110  : SF <= 255;
-                        3'b111  : SF <= 511;
+                    case({!S_AXIS_CONFIG_TVALID, S_AXIS_CONFIG_TDATA[11:9]})
+                        4'b1000  : SF <= 3;
+                        4'b1001  : SF <= 7;
+                        4'b1010  : SF <= 16;
+                        4'b1011  : SF <= 31;
+                        4'b1100  : SF <= 63;
+                        4'b1101  : SF <= 127;
+                        4'b1110  : SF <= 255;
+                        4'b1111  : SF <= 511;
                         default : SF <= 0;
                      endcase
                 end
@@ -91,7 +91,7 @@
                 begin
                     count <= 0;
                 end
-             else if(count == SF)
+             else if(count == SF || !S_AXIS_CONFIG_TVALID)
                 begin
                     count <= 0;
                 end
@@ -126,10 +126,28 @@
   
  assign M_AXIS_DATA_TDATA[0] = ^(K & count);
  
- //Cheak LW
  
  
- //cheak DataValid  
+ //Cheak DataValid
+ assign M_AXIS_DATA_TVALID = (SF == 0) ? 1'b0 : 1'b1;
+ 
+ 
+ assign M_AXIS_DATA_TLAST = (SF == count) ? 1'b1 : 1'b0;
+ 
+ 
+ always @(posedge ACLK or negedge ARST)
+    begin
+        if(!ARST)
+            begin
+               M_AXIS_DATA_TLAST <= 0;
+            end
+        else
+            begin
+               assign M_AXIS_DATA_TLAST = (SF == count) ? 1'b1 : 1'b0;           
+            end
+    end
+ 
+  //Cheak LW 
  endmodule
  
 
